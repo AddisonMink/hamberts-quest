@@ -2,5 +2,6 @@
 
 game:
 	$(CC) main.c \
-	 	$(shell pkg-config --libs --cflags raylib) -o Game
+	panels.c \
+	$(shell pkg-config --libs --cflags raylib) -o Game
 	./Game
