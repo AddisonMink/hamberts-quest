@@ -30,7 +30,7 @@ const int MAX_PANELS = PANEL_SLOTS - 1;
 const float PANEL_WIDTH = 2;
 const float PANEL_HEIGHT = 2;
 const float PANEL_DEPTH = 0.1;
-const float PANEL_Y = PANEL_HEIGHT / 2;
+const float PANEL_Y = 1; // PANEL_HEIGHT / 2;
 const float PANEL_STARTING_Z = -20;
 const float PANEL_MAX_Z = 1;
 const float PANEL_SPEED = 10;
@@ -116,9 +116,9 @@ Vector3 PanelsDraw(Panels *panels)
 const float HAMBERT_WIDTH = 1.5;
 const float HAMBERT_HEIGHT = 0.75;
 const float HAMBERT_DEPTH = 0.1;
-const float HAMBERT_MIN_X = -WIDTH / 2 + HAMBERT_WIDTH / 2;
-const float HAMBERT_MAX_X = WIDTH / 2 - HAMBERT_WIDTH / 2;
-const float HAMBERT_Y = HAMBERT_HEIGHT / 2;
+const float HAMBERT_MIN_X = -4.25; // -WIDTH / 2 + HAMBERT_WIDTH / 2;
+const float HAMBERT_MAX_X = 4.25;  // WIDTH / 2 - HAMBERT_WIDTH / 2;
+const float HAMBERT_Y = 0.375;     // HAMBERT_HEIGHT / 2;
 const float HAMBERT_Z = 0;
 const float HAMBERT_SPEED = 5;
 const Color HAMBERT_COLOR = BEIGE;
@@ -162,7 +162,7 @@ void HambertDraw(float x)
 const float PECAN_WIDTH = 0.5;
 const float PECAN_HEIGHT = 0.5;
 const float PECAN_DEPTH = 0.1;
-const float PECAN_Y = PECAN_HEIGHT / 2;
+const float PECAN_Y = 0.25; // PECAN_HEIGHT / 2;
 const Color PECAN_COLOR = BROWN;
 
 typedef struct Game
