@@ -1,7 +1,18 @@
 #include "raylib.h"
 #include "stddef.h"
 
-// BUG: Max panel limit not working.
+/* TODO
+ * - BUG: Max panel limit not working.
+ * - FEATURE: Randomly spawn pecan in open slot.
+ * - FEATURE: Collision with panels causes game over.
+ * - FEATURE: An eye circles over the horizon.
+ * - FEATURE: At the eye's zenith, background turns white and eye opens.
+ * - FEATURE: While the eye is open, hambert stops.
+ * - FEATURE: If Hambert isn't in behind a panel when the eye is open, game over.
+ * - FEATURE: Draw sides of room.
+ * - FEATURE: Game over screen with option to restart.
+ * - FEATURE: Start screen.
+ */
 
 // Util
 //--------------------------------------------------------------------------------------
@@ -34,7 +45,7 @@ const float PANEL_Y = 1; // PANEL_HEIGHT / 2;
 const float PANEL_STARTING_Z = -20;
 const float PANEL_MAX_Z = 1;
 const float PANEL_SPEED = 10;
-const Color PANEL_COLOR = RED;
+const Color PANEL_COLOR = RAYWHITE;
 
 typedef struct Panels
 {
@@ -185,6 +196,7 @@ void PecanDraw(float z, size_t slot)
 
 // Game
 //--------------------------------------------------------------------------------------
+const Color GRID_COLOR = DARKGREEN;
 
 typedef struct Game
 {
@@ -224,7 +236,7 @@ void GameDraw(Game *game)
 
 void GameDrawOverlay(Game *game)
 {
-    DrawText(TextFormat("SCORE: %d", game->score), 10, 10, 40, DARKGRAY);
+    DrawText(TextFormat("SCORE: %d", game->score), 10, 10, 40, RAYWHITE);
 }
 //--------------------------------------------------------------------------------------
 
@@ -262,7 +274,7 @@ int main(void)
         // Draw
         //----------------------------------------------------------------------------------
         BeginDrawing();
-        ClearBackground(RAYWHITE);
+        ClearBackground(BLACK);
 
         BeginMode3D(camera);
         GameDraw(&game);
