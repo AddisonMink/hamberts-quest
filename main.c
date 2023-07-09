@@ -2,16 +2,20 @@
 #include "stddef.h"
 
 /* TODO
+ * MSP
  * - BUG: Max panel limit not working.
+ * - BUG: Pecan does not disapepar when collected.
  * - FEATURE: Randomly spawn pecan in open slot.
  * - FEATURE: Collision with panels causes game over.
+ * - FEATURE: Draw sides of room.
+ * - FEATURE: Game over screen with option to restart.
+ * - FEATURE: Start screen.
+ *
+ * STRETCH
  * - FEATURE: An eye circles over the horizon.
  * - FEATURE: At the eye's zenith, background turns white and eye opens.
  * - FEATURE: While the eye is open, hambert stops.
  * - FEATURE: If Hambert isn't in behind a panel when the eye is open, game over.
- * - FEATURE: Draw sides of room.
- * - FEATURE: Game over screen with option to restart.
- * - FEATURE: Start screen.
  */
 
 // Util
