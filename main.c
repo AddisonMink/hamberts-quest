@@ -1,160 +1,271 @@
 #include "raylib.h"
 #include "stddef.h"
-#include "panels.h"
 
-const Vector3 CAMERA_POSITION = {0.0f, 2.5f, -10.0f};
+// BUG: Max panel limit not working.
 
-const float HAMBERT_WIDTH = 1.75f;
-const float HAMBERT_HEIGHT = 1.5f;
-const float HAMBERT_DEPTH = 0.1f;
-const float HAMBERT_Z = 0.0f;
-const float HAMBERT_MIN_X = -6.0f;
-const float HAMBERT_MAX_X = 6.0f;
-const float HAMBERT_SPEED = 10.0f;
-const Color HAMBERT_COLOR = BEIGE;
-
-// State
+// Util
 //--------------------------------------------------------------------------------------
+const Vector3 CAMERA_POSITION = {0.0f, 1.0f, 10.0f};
+const float WIDTH = 10;
 
-typedef enum State
+BoundingBox MakeBox(Vector3 pos, float width, float height, float depth)
 {
-    PLAYING,
-    GAME_OVER,
-} State;
-
-State state = PLAYING;
-
-// X-Coordinate of Hambert.
-float Hambert = 0;
-
-//--------------------------------------------------------------------------------------
-
-//--------------------------------------------------------------------------------------
-
-// Hambert Logic
-//--------------------------------------------------------------------------------------
-BoundingBox HambertBox()
-{
-    return (BoundingBox){
-        (Vector3){Hambert - HAMBERT_WIDTH / 2, -HAMBERT_HEIGHT / 2, HAMBERT_Z - HAMBERT_DEPTH / 2},
-        (Vector3){Hambert + HAMBERT_WIDTH / 2, HAMBERT_HEIGHT / 2, HAMBERT_Z + HAMBERT_DEPTH / 2}};
-}
-
-void HambertMove(bool left, bool right, float delta)
-{
-    float dx = 0;
-    if (right)
-        dx -= HAMBERT_SPEED;
-    if (left)
-        dx += HAMBERT_SPEED;
-    Hambert += dx * delta;
-
-    if (Hambert < HAMBERT_MIN_X)
-        Hambert = HAMBERT_MIN_X;
-    if (Hambert > HAMBERT_MAX_X)
-        Hambert = HAMBERT_MAX_X;
-}
-
-void HambertDraw()
-{
-    Vector3 pos = (Vector3){Hambert, 0.0f, HAMBERT_Z};
-    DrawCube(pos, HAMBERT_WIDTH, HAMBERT_HEIGHT, HAMBERT_DEPTH, HAMBERT_COLOR);
+    BoundingBox box;
+    box.min.x = pos.x - (width / 2.0f);
+    box.min.y = pos.y - (height / 2.0f);
+    box.min.z = pos.z - (depth / 2.0f);
+    box.max.x = pos.x + (width / 2.0f);
+    box.max.y = pos.y + (height / 2.0f);
+    box.max.z = pos.z + (depth / 2.0f);
+    return box;
 }
 //--------------------------------------------------------------------------------------
 
-// Game Logic
+// Panels
 //--------------------------------------------------------------------------------------
+const size_t PANEL_SLOTS = 5;
+const int PANEL_SPAWN_CHANCE = 50;
+const int MIN_PANELS = 2;
+const int MAX_PANELS = PANEL_SLOTS - 1;
+const float PANEL_WIDTH = 2;
+const float PANEL_HEIGHT = 2;
+const float PANEL_DEPTH = 0.1;
+const float PANEL_Y = PANEL_HEIGHT / 2;
+const float PANEL_STARTING_Z = -20;
+const float PANEL_MAX_Z = 1;
+const float PANEL_SPEED = 10;
+const Color PANEL_COLOR = RED;
 
-void PlayingUpdate(Panels *panels)
+typedef struct Panels
 {
-    float delta = GetFrameTime();
-    bool left = IsKeyDown(KEY_A);
-    bool right = IsKeyDown(KEY_D);
-    HambertMove(left, right, delta);
-    PanelsMove(panels, delta);
+    bool alive[PANEL_SLOTS];
+    float z;
+} Panels;
 
-    if (PanelsCheckCollision(panels, HambertBox()))
+int _PanelsFill(Panels *panels)
+{
+    int filled = 0;
+    for (size_t i = 0; i < PANEL_SLOTS; i++)
     {
-        state = GAME_OVER;
+        bool alive = GetRandomValue(0, 100) < PANEL_SPAWN_CHANCE;
+        panels->alive[i] = alive;
+        if (alive)
+            filled++;
+    }
+    return filled;
+}
+
+void PanelsInit(Panels *panels)
+{
+    int filled = 0;
+    while (filled < MIN_PANELS || filled >= MAX_PANELS)
+        filled = _PanelsFill(panels);
+
+    panels->alive[0] = true;
+    panels->alive[4] = true;
+    panels->z = PANEL_STARTING_Z;
+}
+
+void PanelsMove(Panels *panels, float delta)
+{
+    panels->z += PANEL_SPEED * delta;
+    if (panels->z > PANEL_MAX_Z)
+        PanelsInit(panels);
+}
+
+float PanelsX(size_t slot)
+{
+    float offset = -PANEL_WIDTH * (PANEL_SLOTS / 2);
+    return slot * PANEL_WIDTH + offset;
+}
+
+Vector3 _PanelsPos(Panels *panels, size_t slot)
+{
+    float offset = -PANEL_WIDTH * (PANEL_SLOTS / 2);
+    float x = PanelsX(slot);
+    return (Vector3){x, PANEL_Y, panels->z};
+}
+
+BoundingBox _PanelsBox(Panels *panels, size_t slot)
+{
+    Vector3 pos = _PanelsPos(panels, slot);
+    return MakeBox(pos, PANEL_WIDTH, PANEL_HEIGHT, PANEL_DEPTH);
+}
+
+bool CheckPanelCollisions(Panels *panels, BoundingBox box)
+{
+    for (size_t i = 0; i < PANEL_SLOTS; i++)
+        if (panels->alive[i] && CheckCollisionBoxes(box, _PanelsBox(panels, i)))
+            return true;
+    return false;
+}
+
+Vector3 PanelsDraw(Panels *panels)
+{
+    for (size_t i = 0; i < PANEL_SLOTS; i++)
+    {
+        if (!panels->alive[i])
+            continue;
+        DrawCube(_PanelsPos(panels, i), PANEL_WIDTH, PANEL_HEIGHT, PANEL_DEPTH, PANEL_COLOR);
     }
 }
 //--------------------------------------------------------------------------------------
 
-//------------------------------------------------------------------------------------
-// Program main entry point
-//------------------------------------------------------------------------------------
+// Hambert
+//--------------------------------------------------------------------------------------
+const float HAMBERT_WIDTH = 1.5;
+const float HAMBERT_HEIGHT = 0.75;
+const float HAMBERT_DEPTH = 0.1;
+const float HAMBERT_MIN_X = -WIDTH / 2 + HAMBERT_WIDTH / 2;
+const float HAMBERT_MAX_X = WIDTH / 2 - HAMBERT_WIDTH / 2;
+const float HAMBERT_Y = HAMBERT_HEIGHT / 2;
+const float HAMBERT_Z = 0;
+const float HAMBERT_SPEED = 5;
+const Color HAMBERT_COLOR = BEIGE;
+
+void HambertInit(float *x)
+{
+    x = 0;
+}
+
+void HambertMove(float *x, float delta)
+{
+    float dx = 0;
+    if (IsKeyDown(KEY_A))
+        dx -= HAMBERT_SPEED;
+    if (IsKeyDown(KEY_D))
+        dx += HAMBERT_SPEED;
+    dx = dx * delta;
+
+    *x += dx;
+    if (*x < HAMBERT_MIN_X)
+        *x = HAMBERT_MIN_X;
+    if (*x > HAMBERT_MAX_X)
+        *x = HAMBERT_MAX_X;
+}
+
+BoundingBox HambertBox(float x)
+{
+    Vector3 pos = {x, HAMBERT_Y, HAMBERT_Z};
+    return MakeBox(pos, HAMBERT_WIDTH, HAMBERT_HEIGHT, HAMBERT_DEPTH);
+}
+
+void HambertDraw(float x)
+{
+    Vector3 pos = {x, HAMBERT_Y, HAMBERT_Z};
+    DrawCube(pos, HAMBERT_WIDTH, HAMBERT_HEIGHT, HAMBERT_DEPTH, HAMBERT_COLOR);
+}
+//--------------------------------------------------------------------------------------
+
+// Game
+//--------------------------------------------------------------------------------------
+const float PECAN_WIDTH = 0.5;
+const float PECAN_HEIGHT = 0.5;
+const float PECAN_DEPTH = 0.1;
+const float PECAN_Y = PECAN_HEIGHT / 2;
+const Color PECAN_COLOR = BROWN;
+
+typedef struct Game
+{
+    Panels panels;
+    float hambert;
+    float pecan;
+    bool colliding;
+} Game;
+
+void GameInit(Game *game)
+{
+    PanelsInit(&game->panels);
+    HambertInit(&game->hambert);
+    game->colliding = false;
+}
+
+void GameUpdate(Game *game, float delta)
+{
+    PanelsMove(&game->panels, delta);
+    HambertMove(&game->hambert, delta);
+
+    if (CheckPanelCollisions(&game->panels, HambertBox(game->hambert)))
+    {
+        game->colliding = true;
+    }
+    else
+    {
+        game->colliding = false;
+    }
+}
+
+void _PecanDraw(Panels *panels, size_t slot)
+{
+    Vector3 pos = {PanelsX(slot), PECAN_Y, panels->z};
+    DrawCube(pos, PECAN_WIDTH, PECAN_HEIGHT, PECAN_DEPTH, PECAN_COLOR);
+}
+
+void GameDraw(Game *game)
+{
+    PanelsDraw(&game->panels);
+    _PecanDraw(&game->panels, 2);
+    HambertDraw(game->hambert);
+    DrawGrid(10, 1.0f);
+}
+
+void GameDrawOverlay(Game *game)
+{
+    if (game->colliding)
+    {
+        DrawText("COLLIDING", 10, 10, 40, DARKGRAY);
+    }
+}
+//--------------------------------------------------------------------------------------
+
 int main(void)
 {
-    // Initialization
-    //--------------------------------------------------------------------------------------
     const int screenWidth = 800;
     const int screenHeight = 450;
 
-    InitWindow(screenWidth, screenHeight, "raylib [core] example - core world screen");
-    Panels *panels = PanelsInit();
+    // SETUP
+    //--------------------------------------------------------------------------------------
+    InitWindow(screenWidth, screenHeight, "raylib [core] example - 3d camera mode");
 
-    // Define the camera to look into our 3d world
-    Camera camera = {0};
+    Camera3D camera = {0};
     camera.position = CAMERA_POSITION;
-    camera.target = (Vector3){0.0f, 0.0f, 0.0f}; // Camera looking at point
-    camera.up = (Vector3){0.0f, 1.0f, 0.0f};     // Camera up vector (rotation towards target)
-    camera.fovy = 45.0f;                         // Camera field-of-view Y
-    camera.projection = CAMERA_PERSPECTIVE;      // Camera projection type
+    camera.target = (Vector3){0.0f, 0.0f, 0.0f};
+    camera.up = (Vector3){0.0f, 1.0f, 0.0f};
+    camera.fovy = 45.0f;
+    camera.projection = CAMERA_PERSPECTIVE;
 
-    DisableCursor(); // Limit cursor to relative movement inside the window
+    Game game;
+    GameInit(&game);
 
-    SetTargetFPS(60); // Set our game to run at 60 frames-per-second
+    SetTargetFPS(60);
     //--------------------------------------------------------------------------------------
 
-    // Main game loop
     while (!WindowShouldClose())
     {
         // Update
         //----------------------------------------------------------------------------------
-
-        switch (state)
-        {
-        case PLAYING:
-            PlayingUpdate(panels);
-            break;
-
-        default:
-            break;
-        }
-
+        GameUpdate(&game, GetFrameTime());
+        camera.position.x = game.hambert;
+        camera.target.x = game.hambert;
         //----------------------------------------------------------------------------------
 
         // Draw
         //----------------------------------------------------------------------------------
         BeginDrawing();
-
         ClearBackground(RAYWHITE);
 
         BeginMode3D(camera);
-        PanelsDraw(panels);
-        HambertDraw();
-        DrawGrid(10, 1.0f);
-
+        GameDraw(&game);
         EndMode3D();
 
-        switch (state)
-        {
-        case PLAYING:
-            DrawText("Playing", 10, 10, 40, DARKGRAY);
-            break;
-
-        case GAME_OVER:
-            DrawText("Game Over", 10, 10, 40, DARKGRAY);
-            break;
-        }
-
+        GameDrawOverlay(&game);
         EndDrawing();
         //----------------------------------------------------------------------------------
     }
 
     // De-Initialization
     //--------------------------------------------------------------------------------------
-    CloseWindow(); // Close window and OpenGL context
+    CloseWindow();
     //--------------------------------------------------------------------------------------
 
     return 0;
