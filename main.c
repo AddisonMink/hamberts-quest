@@ -157,7 +157,7 @@ void HambertDraw(float x)
 }
 //--------------------------------------------------------------------------------------
 
-// Game
+// Pecan
 //--------------------------------------------------------------------------------------
 const float PECAN_WIDTH = 0.5;
 const float PECAN_HEIGHT = 0.5;
@@ -165,56 +165,66 @@ const float PECAN_DEPTH = 0.1;
 const float PECAN_Y = 0.25; // PECAN_HEIGHT / 2;
 const Color PECAN_COLOR = BROWN;
 
+Vector3 _PecanPos(float z, size_t slot)
+{
+    return (Vector3){PanelsX(slot), PECAN_Y, z};
+}
+
+BoundingBox PecanBox(float z, size_t slot)
+{
+    return MakeBox(_PecanPos(z, slot), PECAN_WIDTH, PECAN_HEIGHT, PECAN_DEPTH);
+}
+
+void PecanDraw(float z, size_t slot)
+{
+    Vector3 pos = _PecanPos(z, slot);
+    DrawCube(pos, PECAN_WIDTH, PECAN_HEIGHT, PECAN_DEPTH, PECAN_COLOR);
+}
+
+//--------------------------------------------------------------------------------------
+
+// Game
+//--------------------------------------------------------------------------------------
+
 typedef struct Game
 {
     Panels panels;
     float hambert;
-    float pecan;
-    bool colliding;
+    size_t pecan;
+    int score;
 } Game;
 
 void GameInit(Game *game)
 {
     PanelsInit(&game->panels);
     HambertInit(&game->hambert);
-    game->colliding = false;
+    game->pecan = 2;
+    game->score = 0;
 }
 
 void GameUpdate(Game *game, float delta)
 {
     PanelsMove(&game->panels, delta);
     HambertMove(&game->hambert, delta);
+    BoundingBox hambertBox = HambertBox(game->hambert);
 
-    if (CheckPanelCollisions(&game->panels, HambertBox(game->hambert)))
+    if (CheckCollisionBoxes(hambertBox, PecanBox(game->panels.z, game->pecan)))
     {
-        game->colliding = true;
+        game->score++;
     }
-    else
-    {
-        game->colliding = false;
-    }
-}
-
-void _PecanDraw(Panels *panels, size_t slot)
-{
-    Vector3 pos = {PanelsX(slot), PECAN_Y, panels->z};
-    DrawCube(pos, PECAN_WIDTH, PECAN_HEIGHT, PECAN_DEPTH, PECAN_COLOR);
 }
 
 void GameDraw(Game *game)
 {
     PanelsDraw(&game->panels);
-    _PecanDraw(&game->panels, 2);
+    PecanDraw(game->panels.z, game->pecan);
     HambertDraw(game->hambert);
     DrawGrid(10, 1.0f);
 }
 
 void GameDrawOverlay(Game *game)
 {
-    if (game->colliding)
-    {
-        DrawText("COLLIDING", 10, 10, 40, DARKGRAY);
-    }
+    DrawText(TextFormat("SCORE: %d", game->score), 10, 10, 40, DARKGRAY);
 }
 //--------------------------------------------------------------------------------------
 
