@@ -7,7 +7,6 @@
  * - BUG: Pecan does not disapepar when collected.
  * - FEATURE: Randomly spawn pecan in open slot.
  * - FEATURE: Collision with panels causes game over.
- * - FEATURE: Make grid scroll (static z lines, scrolling x lines)
  * - FEATURE: Game over screen with option to restart.
  * - FEATURE: Start screen.
  *
@@ -55,7 +54,8 @@ const float PANEL_Y = 1; // PANEL_HEIGHT / 2;
 const float PANEL_STARTING_Z = -20;
 const float PANEL_MAX_Z = 1;
 const float PANEL_SPEED = 10;
-const Color PANEL_COLOR = RAYWHITE;
+const Color PANEL_COLOR = DARKGREEN;
+const Color PANEL_WIRE_COLOR = GREEN;
 
 typedef struct Panels
 {
@@ -128,6 +128,7 @@ Vector3 PanelsDraw(Panels *panels)
         if (!panels->alive[i])
             continue;
         DrawCube(_PanelsPos(panels, i), PANEL_WIDTH, PANEL_HEIGHT, PANEL_DEPTH, PANEL_COLOR);
+        DrawCubeWires(_PanelsPos(panels, i), PANEL_WIDTH, PANEL_HEIGHT, PANEL_DEPTH, PANEL_WIRE_COLOR);
     }
 }
 //--------------------------------------------------------------------------------------
@@ -206,6 +207,7 @@ void PecanDraw(float z, size_t slot)
 
 // Game
 //--------------------------------------------------------------------------------------
+const float GRID_SPACING = 1;
 const Color GRID_COLOR = DARKGREEN;
 
 typedef struct Game
@@ -236,20 +238,48 @@ void GameUpdate(Game *game, float delta)
     }
 }
 
+void _GameDrawXLine(float z)
+{
+    Vector3 start = {-WIDTH / 2, 0, z};
+    Vector3 end = {WIDTH / 2, 0, z};
+    DrawLine3D(start, end, GRID_COLOR);
+}
+
+void _GameDrawZLine(float x)
+{
+    Vector3 start = {x, 0, 0};
+    Vector3 end = {x, 0, 100.0};
+    DrawLine3D(start, end, GRID_COLOR);
+}
+
+void _GameDrawGrid(float z)
+{
+    for (int i = -20; i <= 20; i++)
+    {
+        float lineZ = z + i * GRID_SPACING;
+        _GameDrawXLine(lineZ);
+    }
+
+    for (int i = -WIDTH; i < WIDTH; i++)
+        _GameDrawZLine(i * GRID_SPACING);
+}
+
 void _GameDrawWall(float x)
 {
     Vector3 pos = {x, PANEL_HEIGHT / 2, 0};
     DrawCube(pos, PANEL_DEPTH, PANEL_HEIGHT, 100.0, PANEL_COLOR);
+    DrawCubeWires(pos, PANEL_DEPTH, PANEL_HEIGHT, 100.0, PANEL_WIRE_COLOR);
 }
 
 void GameDraw(Game *game)
 {
+    _GameDrawGrid(game->panels.z);
     _GameDrawWall(-WIDTH / 2);
     _GameDrawWall(WIDTH / 2);
     PanelsDraw(&game->panels);
     PecanDraw(game->panels.z, game->pecan);
     HambertDraw(game->hambert);
-    DrawGrid(10, 1.0f);
+    // DrawGrid(10, 1.0f);
 }
 
 void GameDrawOverlay(Game *game)
