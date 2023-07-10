@@ -1,9 +1,9 @@
 #include "raylib.h"
+#include "raymath.h"
 #include "stddef.h"
 
 /* TODO
  * STRETCH
- * - FEATURE: An eye circles over the horizon.
  * - FEATURE: At the eye's zenith, background turns white and eye opens.
  * - FEATURE: While the eye is open, hambert stops.
  * - FEATURE: If Hambert isn't in behind a panel when the eye is open, game over.
@@ -214,6 +214,31 @@ void PecanDraw(float z, size_t slot)
 
 //--------------------------------------------------------------------------------------
 
+// Eye
+//--------------------------------------------------------------------------------------
+const float EYE_RADIUS = 32;
+const float EYE_ORBIT_RADIUS = 100;
+const float EYE_SPEED = 1;
+
+void EyeMove(float *angle, float delta)
+{
+    *angle += EYE_SPEED * delta;
+    if (*angle > 2 * PI)
+        *angle -= 2 * PI;
+    TraceLog(LOG_INFO, TextFormat("angle = %f", *angle));
+}
+
+void EyeDraw(float angle)
+{
+    if (angle > 1.25 * PI && angle < 2 * PI - 0.15 * PI)
+    {
+        float x = cosf(angle) * EYE_ORBIT_RADIUS + SCREEN_WIDTH / 2;
+        float y = sinf(angle) * EYE_ORBIT_RADIUS + SCREEN_HEIGHT / 2;
+        DrawCircle(x, y, 32, RAYWHITE);
+    }
+}
+//--------------------------------------------------------------------------------------
+
 // Game
 //--------------------------------------------------------------------------------------
 const float GRID_SPACING = 1;
@@ -231,6 +256,7 @@ typedef struct Game
     Panels panels;
     float hambert;
     size_t pecan;
+    float eyeAngle;
     int score;
     State state;
 } Game;
@@ -241,6 +267,7 @@ void GameInit(Game *game)
     HambertInit(&game->hambert);
     game->pecan = PanelsEmptySlot(&game->panels);
     game->score = 0;
+    game->eyeAngle = 0;
     game->state = START;
 }
 
@@ -262,8 +289,10 @@ void GameUpdate(Game *game, float delta)
     }
     break;
     case PLAYING:
+    {
         PanelsMove(&game->panels, delta);
         HambertMove(&game->hambert, delta);
+        EyeMove(&game->eyeAngle, delta);
         BoundingBox hambertBox = HambertBox(game->hambert);
 
         if (CheckCollisionBoxes(hambertBox, PecanBox(game->panels.z, game->pecan)))
@@ -280,8 +309,8 @@ void GameUpdate(Game *game, float delta)
             PanelsInit(&game->panels);
             game->pecan = PanelsEmptySlot(&game->panels);
         }
-
-        break;
+    }
+    break;
 
     case GAME_OVER:
         if (IsKeyPressed(KEY_SPACE))
@@ -323,6 +352,19 @@ void _GameDrawWall(float x)
     DrawCubeWires(pos, PANEL_DEPTH, PANEL_HEIGHT, 100.0, PANEL_WIRE_COLOR);
 }
 
+void GameDrawUnderlay(Game *game)
+{
+    switch (game->state)
+    {
+    case PLAYING:
+        EyeDraw(game->eyeAngle);
+        break;
+
+    default:
+        break;
+    }
+}
+
 void GameDraw(Game *game)
 {
     _GameDrawGrid(game->panels.z);
@@ -353,8 +395,10 @@ void GameDrawOverlay(Game *game)
     }
     break;
     case PLAYING:
+    {
         DrawText(TextFormat("Pecans: %d", game->score), 10, 10, 20, RAYWHITE);
-        break;
+    }
+    break;
 
     case GAME_OVER:
     {
@@ -408,6 +452,8 @@ int main(void)
         //----------------------------------------------------------------------------------
         BeginDrawing();
         ClearBackground(BLACK);
+
+        GameDrawUnderlay(&game);
 
         BeginMode3D(camera);
         GameDraw(&game);
