@@ -2,10 +2,6 @@
 #include "stddef.h"
 
 /* TODO
- * MSP
- * - FEATURE: Game over screen with option to restart.
- * - FEATURE: Start screen.
- *
  * STRETCH
  * - FEATURE: An eye circles over the horizon.
  * - FEATURE: At the eye's zenith, background turns white and eye opens.
@@ -21,6 +17,8 @@
 
 // Util
 //--------------------------------------------------------------------------------------
+const int SCREEN_WIDTH = 800;
+const int SCREEN_HEIGHT = 450;
 const Vector3 CAMERA_POSITION = {0.0f, 1.0f, 10.0f};
 const float WIDTH = 10;
 
@@ -131,7 +129,7 @@ size_t PanelsEmptySlot(Panels *panels)
     return buffer[idx];
 }
 
-Vector3 PanelsDraw(Panels *panels)
+void PanelsDraw(Panels *panels)
 {
     for (size_t i = 0; i < PANEL_SLOTS; i++)
     {
@@ -223,6 +221,7 @@ const Color GRID_COLOR = DARKGREEN;
 
 typedef enum State
 {
+    START,
     PLAYING,
     GAME_OVER,
 } State;
@@ -242,13 +241,26 @@ void GameInit(Game *game)
     HambertInit(&game->hambert);
     game->pecan = PanelsEmptySlot(&game->panels);
     game->score = 0;
+    game->state = START;
+}
+
+void GameReset(Game *game)
+{
+    GameInit(game);
     game->state = PLAYING;
+    game->hambert = 0;
 }
 
 void GameUpdate(Game *game, float delta)
 {
     switch (game->state)
     {
+    case START:
+    {
+        if (IsKeyPressed(KEY_SPACE))
+            game->state = PLAYING;
+    }
+    break;
     case PLAYING:
         PanelsMove(&game->panels, delta);
         HambertMove(&game->hambert, delta);
@@ -266,12 +278,14 @@ void GameUpdate(Game *game, float delta)
         if (game->panels.z > PANEL_MAX_Z)
         {
             PanelsInit(&game->panels);
-            game->pecan = PanelsEmptySlot(&game->panels);            
+            game->pecan = PanelsEmptySlot(&game->panels);
         }
 
         break;
 
-    default:
+    case GAME_OVER:
+        if (IsKeyPressed(KEY_SPACE))
+            GameReset(game);
         break;
     }
 }
@@ -321,18 +335,53 @@ void GameDraw(Game *game)
 
 void GameDrawOverlay(Game *game)
 {
-    DrawText(TextFormat("SCORE: %d", game->score), 10, 10, 40, RAYWHITE);
+    switch (game->state)
+    {
+    case START:
+    {
+        const char *message = "HAMBERT'S QUEST";
+        int messageWidth = MeasureText(message, 60);
+        float messageX = SCREEN_WIDTH / 2 - messageWidth / 2;
+        float messageY = SCREEN_HEIGHT / 4 - 60;
+        DrawText(message, messageX, messageY, 60, RAYWHITE);
+
+        const char *score = "Press 'Space' to Start";
+        int scoreWidth = MeasureText(score, 40);
+        float scoreX = SCREEN_WIDTH / 2 - scoreWidth / 2;
+        float scoreY = SCREEN_HEIGHT * 3 / 4;
+        DrawText(score, scoreX, scoreY, 40, RAYWHITE);
+    }
+    break;
+    case PLAYING:
+        DrawText(TextFormat("Pecans: %d", game->score), 10, 10, 20, RAYWHITE);
+        break;
+
+    case GAME_OVER:
+    {
+        DrawText("Pres 'Space' to restart.", 10, 10, 20, RAYWHITE);
+
+        const char *message = "G A M E  O V E R";
+        int messageWidth = MeasureText(message, 60);
+        float messageX = SCREEN_WIDTH / 2 - messageWidth / 2;
+        float messageY = SCREEN_HEIGHT / 2 - 60;
+        DrawText(message, messageX, messageY, 60, RAYWHITE);
+
+        const char *score = TextFormat("Pecans: %d", game->score);
+        int scoreWidth = MeasureText(score, 40);
+        float scoreX = SCREEN_WIDTH / 2 - scoreWidth / 2;
+        float scoreY = SCREEN_HEIGHT / 2;
+        DrawText(score, scoreX, scoreY, 40, RAYWHITE);
+    }
+    break;
+    }
 }
 //--------------------------------------------------------------------------------------
 
 int main(void)
 {
-    const int screenWidth = 800;
-    const int screenHeight = 450;
-
     // SETUP
     //--------------------------------------------------------------------------------------
-    InitWindow(screenWidth, screenHeight, "raylib [core] example - 3d camera mode");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Hambert's Quest");
 
     Camera3D camera = {0};
     camera.position = CAMERA_POSITION;
@@ -346,20 +395,11 @@ int main(void)
 
     SetTargetFPS(60);
     //--------------------------------------------------------------------------------------
-
-    bool paused = false;
     while (!WindowShouldClose())
     {
         // Update
         //----------------------------------------------------------------------------------
-        if (IsKeyPressed(KEY_SPACE))
-        {
-            paused = !paused;
-        }
-        if (!paused)
-        {
-            GameUpdate(&game, GetFrameTime());
-        }
+        GameUpdate(&game, GetFrameTime());
         camera.position.x = game.hambert;
         camera.target.x = game.hambert;
         //----------------------------------------------------------------------------------
