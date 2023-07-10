@@ -7,7 +7,7 @@
  * - BUG: Pecan does not disapepar when collected.
  * - FEATURE: Randomly spawn pecan in open slot.
  * - FEATURE: Collision with panels causes game over.
- * - FEATURE: Draw sides of room.
+ * - FEATURE: Make grid scroll (static z lines, scrolling x lines)
  * - FEATURE: Game over screen with option to restart.
  * - FEATURE: Start screen.
  *
@@ -16,6 +16,12 @@
  * - FEATURE: At the eye's zenith, background turns white and eye opens.
  * - FEATURE: While the eye is open, hambert stops.
  * - FEATURE: If Hambert isn't in behind a panel when the eye is open, game over.
+ *
+ * STRETCH
+ * - FEATURE: Put animated texture on hambert.
+ * - FEATURE: Put static texture on pecan.
+ * - FEATURE: Hambert gets wider and faster as he east.
+ * - FEATURE: Animation for losing and winning.
  */
 
 // Util
@@ -230,8 +236,16 @@ void GameUpdate(Game *game, float delta)
     }
 }
 
+void _GameDrawWall(float x)
+{
+    Vector3 pos = {x, PANEL_HEIGHT / 2, 0};
+    DrawCube(pos, PANEL_DEPTH, PANEL_HEIGHT, 100.0, PANEL_COLOR);
+}
+
 void GameDraw(Game *game)
 {
+    _GameDrawWall(-WIDTH / 2);
+    _GameDrawWall(WIDTH / 2);
     PanelsDraw(&game->panels);
     PecanDraw(game->panels.z, game->pecan);
     HambertDraw(game->hambert);
