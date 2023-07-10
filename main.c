@@ -3,7 +3,6 @@
 
 /* TODO
  * MSP
- * - BUG: Max panel limit not working.
  * - BUG: Pecan does not disapepar when collected.
  * - FEATURE: Randomly spawn pecan in open slot.
  * - FEATURE: Collision with panels causes game over.
@@ -46,7 +45,7 @@ BoundingBox MakeBox(Vector3 pos, float width, float height, float depth)
 const size_t PANEL_SLOTS = 5;
 const int PANEL_SPAWN_CHANCE = 50;
 const int MIN_PANELS = 2;
-const int MAX_PANELS = PANEL_SLOTS - 1;
+const int MAX_PANELS = 4;
 const float PANEL_WIDTH = 2;
 const float PANEL_HEIGHT = 2;
 const float PANEL_DEPTH = 0.1;
@@ -72,18 +71,16 @@ int _PanelsFill(Panels *panels)
         panels->alive[i] = alive;
         if (alive)
             filled++;
-    }
+    }    
     return filled;
 }
 
 void PanelsInit(Panels *panels)
 {
     int filled = 0;
-    while (filled < MIN_PANELS || filled >= MAX_PANELS)
+    while (filled < MIN_PANELS || filled > MAX_PANELS)
         filled = _PanelsFill(panels);
 
-    panels->alive[0] = true;
-    panels->alive[4] = true;
     panels->z = PANEL_STARTING_Z;
 }
 
@@ -125,10 +122,11 @@ Vector3 PanelsDraw(Panels *panels)
 {
     for (size_t i = 0; i < PANEL_SLOTS; i++)
     {
-        if (!panels->alive[i])
-            continue;
-        DrawCube(_PanelsPos(panels, i), PANEL_WIDTH, PANEL_HEIGHT, PANEL_DEPTH, PANEL_COLOR);
-        DrawCubeWires(_PanelsPos(panels, i), PANEL_WIDTH, PANEL_HEIGHT, PANEL_DEPTH, PANEL_WIRE_COLOR);
+        if (panels->alive[i])
+        {
+            DrawCube(_PanelsPos(panels, i), PANEL_WIDTH, PANEL_HEIGHT, PANEL_DEPTH, PANEL_COLOR);
+            DrawCubeWires(_PanelsPos(panels, i), PANEL_WIDTH, PANEL_HEIGHT, PANEL_DEPTH, PANEL_WIRE_COLOR);
+        }
     }
 }
 //--------------------------------------------------------------------------------------
@@ -210,12 +208,19 @@ void PecanDraw(float z, size_t slot)
 const float GRID_SPACING = 1;
 const Color GRID_COLOR = DARKGREEN;
 
+typedef enum State
+{
+    PLAYING,
+    GAME_OVER,
+} State;
+
 typedef struct Game
 {
     Panels panels;
     float hambert;
     size_t pecan;
     int score;
+    State state;
 } Game;
 
 void GameInit(Game *game)
@@ -224,17 +229,28 @@ void GameInit(Game *game)
     HambertInit(&game->hambert);
     game->pecan = 2;
     game->score = 0;
+    game->state = PLAYING;
 }
 
 void GameUpdate(Game *game, float delta)
 {
-    PanelsMove(&game->panels, delta);
-    HambertMove(&game->hambert, delta);
-    BoundingBox hambertBox = HambertBox(game->hambert);
-
-    if (CheckCollisionBoxes(hambertBox, PecanBox(game->panels.z, game->pecan)))
+    switch (game->state)
     {
-        game->score++;
+    case PLAYING:
+        PanelsMove(&game->panels, delta);
+        HambertMove(&game->hambert, delta);
+        BoundingBox hambertBox = HambertBox(game->hambert);
+
+        if (CheckCollisionBoxes(hambertBox, PecanBox(game->panels.z, game->pecan)))
+            game->score++;
+
+        if (CheckPanelCollisions(&game->panels, hambertBox))
+            game->state = GAME_OVER;
+
+        break;
+
+    default:
+        break;
     }
 }
 
@@ -247,8 +263,8 @@ void _GameDrawXLine(float z)
 
 void _GameDrawZLine(float x)
 {
-    Vector3 start = {x, 0, 0};
-    Vector3 end = {x, 0, 100.0};
+    Vector3 start = {x, 0, -100.0};
+    Vector3 end = {x, 0, 200.0};
     DrawLine3D(start, end, GRID_COLOR);
 }
 
@@ -310,11 +326,19 @@ int main(void)
     SetTargetFPS(60);
     //--------------------------------------------------------------------------------------
 
+    bool paused = false;
     while (!WindowShouldClose())
     {
         // Update
         //----------------------------------------------------------------------------------
-        GameUpdate(&game, GetFrameTime());
+        if (IsKeyPressed(KEY_SPACE))
+        {
+            paused = !paused;
+        }
+        if (!paused)
+        {
+            GameUpdate(&game, GetFrameTime());
+        }
         camera.position.x = game.hambert;
         camera.target.x = game.hambert;
         //----------------------------------------------------------------------------------
