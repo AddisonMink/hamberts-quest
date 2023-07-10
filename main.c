@@ -3,9 +3,6 @@
 
 /* TODO
  * MSP
- * - BUG: Pecan does not disapepar when collected.
- * - FEATURE: Randomly spawn pecan in open slot.
- * - FEATURE: Collision with panels causes game over.
  * - FEATURE: Game over screen with option to restart.
  * - FEATURE: Start screen.
  *
@@ -71,7 +68,7 @@ int _PanelsFill(Panels *panels)
         panels->alive[i] = alive;
         if (alive)
             filled++;
-    }    
+    }
     return filled;
 }
 
@@ -87,8 +84,6 @@ void PanelsInit(Panels *panels)
 void PanelsMove(Panels *panels, float delta)
 {
     panels->z += PANEL_SPEED * delta;
-    if (panels->z > PANEL_MAX_Z)
-        PanelsInit(panels);
 }
 
 float PanelsX(size_t slot)
@@ -116,6 +111,24 @@ bool CheckPanelCollisions(Panels *panels, BoundingBox box)
         if (panels->alive[i] && CheckCollisionBoxes(box, _PanelsBox(panels, i)))
             return true;
     return false;
+}
+
+size_t PanelsEmptySlot(Panels *panels)
+{
+    size_t len = 0;
+    size_t buffer[PANEL_SLOTS];
+
+    for (size_t i = 0; i < PANEL_SLOTS; i++)
+    {
+        if (!panels->alive[i])
+        {
+            buffer[len] = i;
+            len++;
+        }
+    };
+
+    size_t idx = GetRandomValue(0, len - 1);
+    return buffer[idx];
 }
 
 Vector3 PanelsDraw(Panels *panels)
@@ -227,7 +240,7 @@ void GameInit(Game *game)
 {
     PanelsInit(&game->panels);
     HambertInit(&game->hambert);
-    game->pecan = 2;
+    game->pecan = PanelsEmptySlot(&game->panels);
     game->score = 0;
     game->state = PLAYING;
 }
@@ -242,10 +255,19 @@ void GameUpdate(Game *game, float delta)
         BoundingBox hambertBox = HambertBox(game->hambert);
 
         if (CheckCollisionBoxes(hambertBox, PecanBox(game->panels.z, game->pecan)))
+        {
             game->score++;
+            game->pecan = 10000;
+        }
 
         if (CheckPanelCollisions(&game->panels, hambertBox))
             game->state = GAME_OVER;
+
+        if (game->panels.z > PANEL_MAX_Z)
+        {
+            PanelsInit(&game->panels);
+            game->pecan = PanelsEmptySlot(&game->panels);            
+        }
 
         break;
 
@@ -295,7 +317,6 @@ void GameDraw(Game *game)
     PanelsDraw(&game->panels);
     PecanDraw(game->panels.z, game->pecan);
     HambertDraw(game->hambert);
-    // DrawGrid(10, 1.0f);
 }
 
 void GameDrawOverlay(Game *game)
