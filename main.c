@@ -4,11 +4,6 @@
 
 /* TODO
  * STRETCH
- * - FEATURE: At the eye's zenith, background turns white and eye opens.
- * - FEATURE: While the eye is open, hambert stops.
- * - FEATURE: If Hambert isn't in behind a panel when the eye is open, game over.
- *
- * STRETCH
  * - FEATURE: Put animated texture on hambert.
  * - FEATURE: Put static texture on pecan.
  * - FEATURE: Hambert gets wider and faster as he east.
@@ -109,6 +104,26 @@ bool CheckPanelCollisions(Panels *panels, BoundingBox box)
     for (size_t i = 0; i < PANEL_SLOTS; i++)
         if (panels->alive[i] && CheckCollisionBoxes(box, _PanelsBox(panels, i)))
             return true;
+    return false;
+}
+
+bool CheckHiddenFromEye(Panels *panels, BoundingBox box)
+{
+    for (size_t i = 0; i < PANEL_SLOTS; i++)
+    {
+        if (!panels->alive[i])
+            continue;
+
+        BoundingBox panelBox = _PanelsBox(panels, i);
+        panelBox.min.z = -0.1;
+        panelBox.max.z = 0.1;
+
+        box.min.z = -0.1;
+        box.max.z = 0.1;
+
+        if (CheckCollisionBoxes(box, panelBox))
+            return true;
+    }
     return false;
 }
 
@@ -320,6 +335,9 @@ void GameUpdate(Game *game, float delta)
         if (CheckPanelCollisions(&game->panels, hambertBox))
             game->state = GAME_OVER;
 
+        if (EyeIsOpen(game->eyeAngle) && !CheckHiddenFromEye(&game->panels, hambertBox))
+            game->state = GAME_OVER;
+
         if (game->panels.z > PANEL_MAX_Z)
         {
             PanelsInit(&game->panels);
@@ -370,14 +388,9 @@ void _GameDrawWall(float x)
 
 void GameDrawUnderlay(Game *game)
 {
-    switch (game->state)
+    if (game->state != START)
     {
-    case PLAYING:
         EyeDraw(game->eyeAngle);
-        break;
-
-    default:
-        break;
     }
 }
 
