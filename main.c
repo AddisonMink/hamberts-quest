@@ -38,8 +38,8 @@ const int MIN_PANELS = 2;
 const int MAX_PANELS = 4;
 const float PANEL_WIDTH = 2;
 const float PANEL_HEIGHT = 2;
-const float PANEL_DEPTH = 0.1;
-const float PANEL_Y = 1; // PANEL_HEIGHT / 2;
+const float PANEL_DEPTH = 0.2;
+const float PANEL_Y = 1;
 const float PANEL_STARTING_Z = -20;
 const float PANEL_MAX_Z = 1;
 const float PANEL_SPEED = 10;
@@ -172,7 +172,7 @@ const Color HAMBERT_COLOR = BEIGE;
 
 void HambertInit(float *x)
 {
-    x = 0;
+    *x = 0;
 }
 
 void HambertMove(float *x, float delta)
@@ -306,7 +306,6 @@ void GameReset(Game *game)
 {
     GameInit(game);
     game->state = PLAYING;
-    game->hambert = 0;
 }
 
 void GameUpdate(Game *game, float delta)
@@ -473,6 +472,7 @@ int main(void)
         // Update
         //----------------------------------------------------------------------------------
         GameUpdate(&game, GetFrameTime());
+        TraceLog(LOG_INFO, TextFormat("camera x = %f", game.hambert));
         camera.position.x = game.hambert;
         camera.target.x = game.hambert;
         //----------------------------------------------------------------------------------
