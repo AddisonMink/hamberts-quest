@@ -81,7 +81,8 @@ void PanelsInit(Panels *panels)
 
 void PanelsMove(Panels *panels, float delta)
 {
-    panels->z += PANEL_SPEED * delta;
+    float speed = IsKeyDown(KEY_W) ? PANEL_SPEED * 2 : PANEL_SPEED;
+    panels->z += speed * delta;
 }
 
 float PanelsX(size_t slot)
@@ -219,22 +220,37 @@ void PecanDraw(float z, size_t slot)
 const float EYE_RADIUS = 32;
 const float EYE_ORBIT_RADIUS = 100;
 const float EYE_SPEED = 1;
+const float EYE_OPEN_SPAN = PI / 8;
+const float EYE_TOP_ANGLE = 3 * PI / 2;
 
 void EyeMove(float *angle, float delta)
 {
     *angle += EYE_SPEED * delta;
     if (*angle > 2 * PI)
         *angle -= 2 * PI;
-    TraceLog(LOG_INFO, TextFormat("angle = %f", *angle));
+}
+
+bool EyeIsOpen(float angle)
+{
+    float min = EYE_TOP_ANGLE - EYE_OPEN_SPAN / 2;
+    float max = EYE_TOP_ANGLE + EYE_OPEN_SPAN / 2;
+    return angle >= min && angle <= max;
 }
 
 void EyeDraw(float angle)
 {
-    if (angle > 1.25 * PI && angle < 2 * PI - 0.15 * PI)
+    float x = cosf(angle) * EYE_ORBIT_RADIUS + SCREEN_WIDTH / 2;
+    float y = sinf(angle) * EYE_ORBIT_RADIUS + SCREEN_HEIGHT / 2;
+
+    if (EyeIsOpen(angle))
     {
-        float x = cosf(angle) * EYE_ORBIT_RADIUS + SCREEN_WIDTH / 2;
-        float y = sinf(angle) * EYE_ORBIT_RADIUS + SCREEN_HEIGHT / 2;
-        DrawCircle(x, y, 32, RAYWHITE);
+        DrawCircle(x, y, 32, WHITE);
+        DrawCircleLines(x, y, 32, PINK);
+        DrawCircle(x, y, 16, BLACK);
+    }
+    else
+    {
+        DrawCircle(x, y, 32, PINK);
     }
 }
 //--------------------------------------------------------------------------------------
@@ -451,7 +467,10 @@ int main(void)
         // Draw
         //----------------------------------------------------------------------------------
         BeginDrawing();
-        ClearBackground(BLACK);
+        if (EyeIsOpen(game.eyeAngle))
+            ClearBackground(MAROON);
+        else
+            ClearBackground(BLACK);
 
         GameDrawUnderlay(&game);
 
