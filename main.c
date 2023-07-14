@@ -449,6 +449,34 @@ void GameDrawOverlay(Game *game)
 }
 //--------------------------------------------------------------------------------------
 
+void UpdateDrawFrame(Game *game, Camera *camera)
+{
+    // Update
+    //----------------------------------------------------------------------------------
+    GameUpdate(game, GetFrameTime());
+    camera->position.x = game->hambert;
+    camera->target.x = game->hambert;
+    //----------------------------------------------------------------------------------
+
+    // Draw
+    //----------------------------------------------------------------------------------
+    BeginDrawing();
+    if (EyeIsOpen(game->eyeAngle))
+        ClearBackground(MAROON);
+    else
+        ClearBackground(BLACK);
+
+    GameDrawUnderlay(&game);
+
+    BeginMode3D(*camera);
+    GameDraw(game);
+    EndMode3D();
+
+    GameDrawOverlay(game);
+    EndDrawing();
+    //----------------------------------------------------------------------------------
+}
+
 int main(void)
 {
     // SETUP
@@ -469,31 +497,7 @@ int main(void)
     //--------------------------------------------------------------------------------------
     while (!WindowShouldClose())
     {
-        // Update
-        //----------------------------------------------------------------------------------
-        GameUpdate(&game, GetFrameTime());
-        TraceLog(LOG_INFO, TextFormat("camera x = %f", game.hambert));
-        camera.position.x = game.hambert;
-        camera.target.x = game.hambert;
-        //----------------------------------------------------------------------------------
-
-        // Draw
-        //----------------------------------------------------------------------------------
-        BeginDrawing();
-        if (EyeIsOpen(game.eyeAngle))
-            ClearBackground(MAROON);
-        else
-            ClearBackground(BLACK);
-
-        GameDrawUnderlay(&game);
-
-        BeginMode3D(camera);
-        GameDraw(&game);
-        EndMode3D();
-
-        GameDrawOverlay(&game);
-        EndDrawing();
-        //----------------------------------------------------------------------------------
+        UpdateDrawFrame(&game, &camera);
     }
 
     // De-Initialization
