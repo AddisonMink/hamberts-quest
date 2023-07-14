@@ -2,13 +2,11 @@
 #include "raymath.h"
 #include "stddef.h"
 
-/* TODO
- * STRETCH
- * - FEATURE: Put animated texture on hambert.
- * - FEATURE: Put static texture on pecan.
- * - FEATURE: Hambert gets wider and faster as he east.
- * - FEATURE: Animation for losing and winning.
- */
+#define PLATFORM_WEB
+
+#if defined(PLATFORM_WEB)
+#include <emscripten/emscripten.h>
+#endif
 
 // Util
 //--------------------------------------------------------------------------------------
@@ -449,30 +447,33 @@ void GameDrawOverlay(Game *game)
 }
 //--------------------------------------------------------------------------------------
 
-void UpdateDrawFrame(Game *game, Camera *camera)
+Camera camera;
+Game game;
+
+void UpdateDrawFrame()
 {
     // Update
     //----------------------------------------------------------------------------------
-    GameUpdate(game, GetFrameTime());
-    camera->position.x = game->hambert;
-    camera->target.x = game->hambert;
+    GameUpdate(&game, GetFrameTime());
+    camera.position.x = game.hambert;
+    camera.target.x = game.hambert;
     //----------------------------------------------------------------------------------
 
     // Draw
     //----------------------------------------------------------------------------------
     BeginDrawing();
-    if (EyeIsOpen(game->eyeAngle))
+    if (EyeIsOpen(game.eyeAngle))
         ClearBackground(MAROON);
     else
         ClearBackground(BLACK);
 
     GameDrawUnderlay(&game);
 
-    BeginMode3D(*camera);
-    GameDraw(game);
+    BeginMode3D(camera);
+    GameDraw(&game);
     EndMode3D();
 
-    GameDrawOverlay(game);
+    GameDrawOverlay(&game);
     EndDrawing();
     //----------------------------------------------------------------------------------
 }
@@ -483,22 +484,24 @@ int main(void)
     //--------------------------------------------------------------------------------------
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Hambert's Quest");
 
-    Camera3D camera = {0};
+    camera = (Camera){0};
     camera.position = CAMERA_POSITION;
     camera.target = (Vector3){0.0f, 0.0f, 0.0f};
     camera.up = (Vector3){0.0f, 1.0f, 0.0f};
     camera.fovy = 45.0f;
     camera.projection = CAMERA_PERSPECTIVE;
 
-    Game game;
     GameInit(&game);
 
+#if defined(PLATFORM_WEB)
+    emscripten_set_main_loop(UpdateDrawFrame, 0, 1);
+#else
     SetTargetFPS(60);
-    //--------------------------------------------------------------------------------------
     while (!WindowShouldClose())
     {
         UpdateDrawFrame(&game, &camera);
     }
+#endif
 
     // De-Initialization
     //--------------------------------------------------------------------------------------
